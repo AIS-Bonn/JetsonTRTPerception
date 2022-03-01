@@ -351,7 +351,7 @@ bool PoseDetEngine::build_det(std::string model_path){
       sample::gLogInfo << "Detector batch size: " << mParams.batchSize << std::endl;
 
       builder->setMaxBatchSize(mParams.batchSize);
-      config->setMaxWorkspaceSize(5_GiB);
+      config->setMaxWorkspaceSize(1_GiB); //TODO: more memory may enable better optimizations, increase workspace size, if GPU memory is available and TRT warnings about insufficient workspace occur.
       if (mParams.fp16)
       {
           config->setFlag(BuilderFlag::kFP16);
@@ -528,7 +528,7 @@ bool PoseDetEngine::build_segm(std::string model_path){
 
     sample::gLogInfo << "Batch size: " << mParams.batchSize << std::endl;
     builder->setMaxBatchSize(mParams.batchSize);
-    config->setMaxWorkspaceSize(5504_MiB); //5632_MiB); //5760_MiB);
+    config->setMaxWorkspaceSize(1_GiB); //TODO: more memory may enable better optimizations, increase workspace size, if GPU memory is available and TRT warnings about insufficient workspace occur.
 
     if (mParams.fp16)
     {
@@ -694,7 +694,7 @@ bool PoseDetEngine::build_pose(std::string model_path, const int id){
       sample::gLogInfo << "Batch size: " << mParams.batchSizes_pose[id] << std::endl;
 
       builder->setMaxBatchSize(mParams.batchSizes_pose[id]);
-      config->setMaxWorkspaceSize(5_GiB);
+      config->setMaxWorkspaceSize(768_MiB); //TODO: more memory may enable better optimizations, increase workspace size, if GPU memory is available and TRT warnings about insufficient workspace occur.
       if (mParams.fp16)
       {
           config->setFlag(BuilderFlag::kFP16);

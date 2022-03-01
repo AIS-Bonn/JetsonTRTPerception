@@ -4,7 +4,7 @@
     <arg name="flip" default="true" />
     <arg name="pub_raw" default="true" />
     <arg name="debug_heatmap" default="false" />
-    <arg name="camera" default="d455" />
+    <arg name="camera" default="d455_1" />
     <arg name="precision" default="fp16" />
     <arg name="feedback" default="" />
     <arg name="det_tresh" default="0.5" />
