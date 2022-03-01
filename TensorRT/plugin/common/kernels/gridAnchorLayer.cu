@@ -34,8 +34,10 @@ __launch_bounds__(nthdsPerCTA) __global__ void gridAnchorKernel(const GridAnchor
      * the image Every coordinate will go back to the pixel coordinates in the input image if being multiplied by
      * image_input_size Here we implicitly assumes the image input and feature map are square
      */
-    float anchorStride = (1.0 / param.H);
-    float anchorOffset = 0.5 * anchorStride;
+    float anchorStride_h = (1.0 / param.H);
+    float anchorOffset_h = 0.5 * anchorStride_h;
+    float anchorStride_w = (1.0 / param.W);
+    float anchorOffset_w = 0.5 * anchorStride_w;
 
     int tid = blockIdx.x * blockDim.x + threadIdx.x;
     if (tid >= dim)
@@ -47,8 +49,8 @@ __launch_bounds__(nthdsPerCTA) __global__ void gridAnchorKernel(const GridAnchor
     const int h = currIndex / param.W;
 
     // Center coordinates
-    float yC = h * anchorStride + anchorOffset;
-    float xC = w * anchorStride + anchorOffset;
+    float yC = h * anchorStride_h + anchorOffset_h;
+    float xC = w * anchorStride_w + anchorOffset_w;
 
     // x_min, y_min
     float xMin = xC - 0.5 * widths[arId];

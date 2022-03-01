@@ -170,9 +170,12 @@ extern "C"
         initializePlugin<nvinfer1::plugin::CropAndResizeDynamicPluginCreator>(logger, libNamespace);
         initializePlugin<nvinfer1::plugin::DetectionLayerPluginCreator>(logger, libNamespace);
         initializePlugin<nvinfer1::plugin::FlattenConcatPluginCreator>(logger, libNamespace);
+        initializePlugin<nvinfer1::plugin::FlattenConcatDynamicPluginCreator>(logger, libNamespace);
         initializePlugin<nvinfer1::plugin::GenerateDetectionPluginCreator>(logger, libNamespace);
         initializePlugin<nvinfer1::plugin::GridAnchorPluginCreator>(logger, libNamespace);
         initializePlugin<nvinfer1::plugin::GridAnchorRectPluginCreator>(logger, libNamespace);
+        initializePlugin<nvinfer1::plugin::GridAnchorDynamicPluginCreator>(logger, libNamespace);
+        initializePlugin<nvinfer1::plugin::GridAnchorRectDynamicPluginCreator>(logger, libNamespace);
         initializePlugin<nvinfer1::plugin::InstanceNormalizationPluginCreator>(logger, libNamespace);
         initializePlugin<nvinfer1::plugin::LReluPluginCreator>(logger, libNamespace);
         initializePlugin<nvinfer1::plugin::MultilevelCropAndResizePluginCreator>(logger, libNamespace);
