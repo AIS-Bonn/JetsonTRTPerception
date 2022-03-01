@@ -1,0 +1,17 @@
+<launch>
+    <arg name="thermal_agc" default="false" />
+    <arg name="camera" default="d455" />
+    
+    <include file="$(find JetsonTRTPerception)/launch/rs_d455_480p_30Hz.launch">
+        <arg name="camera" value="$(arg camera)" />
+        <arg name="filters" value="decimation,temporal" />
+    </include>
+    
+    <node pkg="flir_thermal_driver" type="flir_thermal_driver_lepton" name="$(arg camera)_flir_lepton_node" output="screen">
+        <param name="enable_8bit_mode" type="bool" value="$(arg thermal_agc)"/>
+        <param name="camera" value="$(arg camera)" />
+    </node>
+    
+    <node pkg="tf2_ros" type="static_transform_publisher" name="$(arg camera)_thermal_broadcaster" args="-0.01155 0.02348 0 0 0 0 1 /$(arg camera)_color_optical_frame /$(arg camera)_thermal_optical_frame" />
+    
+</launch>

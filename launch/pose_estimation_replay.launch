@@ -1,0 +1,41 @@
+<launch>
+    <arg name="model_path_det" default="$(find JetsonTRTPerception)/models/detector.uff" />
+    <arg name="model_path_pose" default="$(find JetsonTRTPerception)/models/pose_model.uff" />
+    <arg name="flip" default="true" />
+    <arg name="pub_raw" default="true" />
+    <arg name="debug_heatmap" default="false" />
+    <arg name="camera" default="d455" />
+    <arg name="precision" default="fp16" />
+    <arg name="feedback" default="" />
+    <arg name="det_tresh" default="0.5" />
+    <arg name="top_k" default="15" />
+    <arg name="delta_t_det" default="1.0" />
+    
+    <arg name="bag_file" default="" />
+    <arg name="cam_topic" default="/$(arg camera)/color/image_raw" />
+    <arg name="replay_sync" default="false" />
+    <arg name="replay_rate" default="1.0" />
+    <arg name="replay_t0" default="" />
+
+    <node name="jetson_pose_replay_node_$(arg camera)" pkg="JetsonTRTPerception" type="jetson_pose_node_replay" output="screen">
+        <param name="flip" value="$(arg flip)" />
+        <param name="debug_heatmap" value="$(arg debug_heatmap)" />
+        <param name="camera" value="$(arg camera)" />
+        <param name="precision" value="$(arg precision)" />
+        <param name="pub_raw" value="$(arg pub_raw)" />
+        <param name="feedback_type" value="$(arg feedback)" />
+        <param name="det_tresh" value="$(arg det_tresh)" />
+        <param name="top_k" value="$(arg top_k)" />
+        <param name="delta_t_det" value="$(arg delta_t_det)" />
+        
+        <param name="bag_file" value="$(arg bag_file)" />
+        <param name="cam_topic" value="$(arg cam_topic)" />
+        <param name="replay_sync" value="$(arg replay_sync)" />
+        <param name="replay_rate_factor" value="$(arg replay_rate)" />
+        <param name="replay_t0" value="$(arg replay_t0)" />
+        
+        <param name="model_det" type="str" value="$(arg model_path_det)" />
+        <param name="model_pose" type="str" value="$(arg model_path_pose)" />
+    </node>
+
+</launch>
