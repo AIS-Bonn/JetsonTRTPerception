@@ -1,8 +1,8 @@
 <launch>
-    <arg name="model_path_det" default="$(find JetsonTRTPerception)/models/detector.uff" />
-    <arg name="model_path_pose" default="$(find JetsonTRTPerception)/models/pose_model.uff" />
-    <arg name="model_path_segm" default="$(find JetsonTRTPerception)/modelsdeeplab_ade20k_604k_480p_prob_small_tflite_op13.onnx" />
-    <arg name="model_path_thermal" default="$(find JetsonTRTPerception)/models/model_lepton_38k_mod.onnx" />
+    <arg name="model_path_det" default="$(find jetson_trt_perception)/models/detector.uff" />
+    <arg name="model_path_pose" default="$(find jetson_trt_perception)/models/pose_model.uff" />
+    <arg name="model_path_segm" default="$(find jetson_trt_perception)/models/deeplab_ade20k_604k_480p_prob_small_tflite_op13.onnx" />
+    <arg name="model_path_thermal" default="$(find jetson_trt_perception)/models/model_lepton_38k_mod.onnx" />
     <arg name="flip" default="true" />
     <arg name="pub_raw" default="true" />
     <arg name="debug_heatmap" default="false" />
@@ -13,7 +13,7 @@
     <arg name="top_k" default="15" />
     <arg name="delta_t_det" default="1.0" />
 
-    <node name="jetson_pose_node_$(arg camera)" pkg="JetsonTRTPerception" type="jetson_pose_node_rosimg" output="screen">
+    <node name="jetson_pose_node_$(arg camera)" pkg="jetson_trt_perception" type="jetson_pose_node_rosimg" output="screen">
         <param name="flip" value="$(arg flip)" />
         <param name="debug_heatmap" value="$(arg debug_heatmap)" />
         <param name="camera" value="$(arg camera)" />

@@ -2,7 +2,7 @@
     <arg name="thermal_agc" default="false" />
     <arg name="camera" default="d455" />
     
-    <include file="$(find JetsonTRTPerception)/launch/rs_d455_480p_30Hz.launch">
+    <include file="$(find jetson_trt_perception)/launch/rs_d455_480p_30Hz.launch">
         <arg name="camera" value="$(arg camera)" />
         <arg name="filters" value="decimation,temporal" />
     </include>

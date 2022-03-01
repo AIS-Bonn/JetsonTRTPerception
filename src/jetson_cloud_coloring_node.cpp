@@ -9,8 +9,6 @@
 #include <tf2_eigen/tf2_eigen.h>
 #include <Eigen/Core>
 
-#include <config_server/parameter.h>
-
 #include <jetson_trt_pose/VoxelFilter.h>
 #include <jetson_trt_pose/datasets.h>
 #include <jetson_trt_pose/nanoflann.hpp>
@@ -69,12 +67,26 @@ typedef nanoflann::KDTreeEigenMatrixAdaptor<Eigen::Matrix3Xf, 3, nanoflann::metr
 bool init_dataset_dependent(int num_classes);
 
 struct Config{
-  config_server::Parameter<float> voxelFilter_side_length{"/voxel_filter/side_length", 0, 1, 100, 20};
-  config_server::Parameter<float> voxelFilter_voxel_length{"/voxel_filter/voxel_length", 0.01f, 0.01f, 1.f, 0.05f}; // default res: 5cm
-
-  config_server::Parameter<bool> use_outlier_filter{"/outlier_filter/enable", false};
-  config_server::Parameter<int> outlier_meanKs{"/outlier_filter/mean_k", 2, 1, 100, 20};
-  config_server::Parameter<float> outlier_stdDevs{"/outlier_filter/std_dev_factor", 0.f, 0.01f, 10.f, 0.5f};
+    //TODO: config server not available for publication. Using hardcoded default values instead..
+    float voxelFilter_side_length = 20.f;
+    float voxelFilter_voxel_length = 0.05f;
+    bool use_outlier_filter = true;
+    int outlier_meanKs = 10;
+    float outlier_stdDevs = 0.5f;
+//   config_server::Parameter<float> voxelFilter_side_length{"/voxel_filter/side_length", 0, 1, 100, 20};
+//   config_server::Parameter<float> voxelFilter_voxel_length{"/voxel_filter/voxel_length", 0.01f, 0.01f, 1.f, 0.05f}; // default res: 5cm
+// 
+//   config_server::Parameter<bool> use_outlier_filter{"/outlier_filter/enable", false};
+//   config_server::Parameter<int> outlier_meanKs{"/outlier_filter/mean_k", 2, 1, 100, 10};
+//   config_server::Parameter<float> outlier_stdDevs{"/outlier_filter/std_dev_factor", 0.f, 0.01f, 10.f, 0.5f};
+//   
+// //   voxel_filter:
+// //     side_length: 20
+// //     voxel_length: 0.05
+// //   outlier_filter:
+// //     enable: 1
+// //     mean_k: 10
+// //     std_dev_factor: 0.5
 };
 
 struct PointRGB{
@@ -292,21 +304,21 @@ void depthSemanticCallback(const sensor_msgs::ImageConstPtr& depth_msg, const se
   auto t1 = std::chrono::high_resolution_clock::now();
 
   //Voxel Filter
-  auto voxel_filter = VoxelGrid::Create(params.voxelFilter_side_length(), params.voxelFilter_voxel_length());
+  auto voxel_filter = VoxelGrid::Create(params.voxelFilter_side_length, params.voxelFilter_voxel_length);
   voxel_filter->addCloud(points3D, depth_mask);
   Eigen::Matrix3Xf point3Dfiltered;
   voxel_filter->getFusedVoxel(point3Dfiltered);
   auto t2 = std::chrono::high_resolution_clock::now();
 
   //Outlier Filter
-  if(params.use_outlier_filter()){
+  if(params.use_outlier_filter){
     my_kd_tree_t tree(3, std::cref(point3Dfiltered), 10);
     tree.index->buildIndex();
     double mean, variance, stddev;
     std::vector<float> distances;
-    generateStatistics(mean, variance, stddev, distances, tree, params.outlier_meanKs(), point3Dfiltered);
+    generateStatistics(mean, variance, stddev, distances, tree, params.outlier_meanKs, point3Dfiltered);
 
-    double const distance_threshold = mean + params.outlier_stdDevs() * stddev; // a distance that is bigger than this signals an outlier
+    double const distance_threshold = mean + params.outlier_stdDevs * stddev; // a distance that is bigger than this signals an outlier
     const int num_points = distances.size();
     Eigen::Matrix3Xf points3DoutlierFiltered(3, num_points);
     int num_points_outlier_filtered = 0;
@@ -572,7 +584,7 @@ void depthSemanticCallback(const sensor_msgs::ImageConstPtr& depth_msg, const se
           median_range = bbox_pts.pts[median_range_ptIdx].r; // 25% quantile
         }
 
-        const float cluster_tolerance = std::max(params.voxelFilter_voxel_length(), g_depth_vert_res * median_range) * cluster_tol_factor[bbox_pts.pts[0].det_class]; // factor * vertical depth resolution at determined median range
+        const float cluster_tolerance = std::max(params.voxelFilter_voxel_length, g_depth_vert_res * median_range) * cluster_tol_factor[bbox_pts.pts[0].det_class]; // factor * vertical depth resolution at determined median range
         my_kd_tree_bbox_t tree(3, bbox_pts, nanoflann::KDTreeSingleIndexAdaptorParams(10));
         tree.buildIndex();
         std::vector<bool> idx_in_cluster;

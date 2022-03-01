@@ -1,6 +1,6 @@
 <launch>
-    <arg name="model_path_det" default="$(find JetsonTRTPerception)/models/detector.uff" />
-    <arg name="model_path_pose" default="$(find JetsonTRTPerception)/models/pose_model.uff" />
+    <arg name="model_path_det" default="$(find jetson_trt_perception)/models/detector.uff" />
+    <arg name="model_path_pose" default="$(find jetson_trt_perception)/models/pose_model.uff" />
     <arg name="flip" default="true" />
     <arg name="pub_raw" default="true" />
     <arg name="debug_heatmap" default="false" />
@@ -17,7 +17,7 @@
     <arg name="replay_rate" default="1.0" />
     <arg name="replay_t0" default="" />
 
-    <node name="jetson_pose_replay_node_$(arg camera)" pkg="JetsonTRTPerception" type="jetson_pose_node_replay" output="screen">
+    <node name="jetson_pose_replay_node_$(arg camera)" pkg="jetson_trt_perception" type="jetson_pose_node_replay" output="screen">
         <param name="flip" value="$(arg flip)" />
         <param name="debug_heatmap" value="$(arg debug_heatmap)" />
         <param name="camera" value="$(arg camera)" />

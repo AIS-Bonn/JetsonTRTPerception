@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 2.8.3)
-project(JetsonTRTPerception)
+project(jetson_trt_perception)
 
 ## Compile as C++11, supported in ROS Kinetic and newer
 # add_compile_options(-std=c++11)
@@ -26,7 +26,6 @@ find_package(catkin REQUIRED COMPONENTS
   tf2_ros
   tf2_eigen
   message_filters
-  config_server
 )
 
 find_package(rosbag)
@@ -187,8 +186,6 @@ add_executable(jetson_cloud_coloring_node src/jetson_cloud_coloring_node.cpp src
 
 ## Specify libraries to link a library or executable target against
 
-target_compile_options(uff_ssd_sample_node PUBLIC "-fno-rtti")
-
 set(SAMPLE_DEP_LIBS
     ${CUDART_LIB}
     ${CUBLAS_LIB}
@@ -201,15 +198,6 @@ set(SAMPLE_DEP_LIBS
     nvparsers
     nvonnxparser
 )
-
-target_link_libraries(uff_ssd_sample_node
-    ${catkin_LIBRARIES}
-    ${SAMPLE_DEP_LIBS}
-    ${OpenCV_LIBS}
-    -Wl,--unresolved-symbols=ignore-in-shared-libs
-)
-
-set_target_properties(uff_ssd_sample_node PROPERTIES LINK_FLAGS "-Wl,--exclude-libs,ALL")
 
 target_link_libraries(pose_det_engine_jetson
     ${catkin_LIBRARIES}
