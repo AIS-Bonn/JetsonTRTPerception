@@ -124,19 +124,16 @@ PoseEstimator::PoseEstimator(ros::NodeHandle& nh_, const PoseEstimatorParams& pa
     // get intrinsics
     string depth_info_topic = "/" + camera + "/depth/camera_info";
     string image_info_topic = "/" + camera + "/color/camera_info";
-    string thermal_info_topic = "/" + camera + "/lepton/camera_info";
     ROS_INFO("Waiting for camera info message on topic \"%s\"...", depth_info_topic.c_str());
     const auto& caminfo_depth_msg = ros::topic::waitForMessage<sensor_msgs::CameraInfo>(depth_info_topic, nh);
     const auto& caminfo_color_msg = ros::topic::waitForMessage<sensor_msgs::CameraInfo>(image_info_topic, nh);
-    const auto& caminfo_thermal_msg = ros::topic::waitForMessage<sensor_msgs::CameraInfo>(thermal_info_topic, nh);
-    if(caminfo_depth_msg == nullptr || caminfo_color_msg == nullptr || caminfo_thermal_msg == nullptr){
+    if(caminfo_depth_msg == nullptr || caminfo_color_msg == nullptr){
       ROS_ERROR("no camera info message received!");
       return;
     }
 
     string depth_frame = caminfo_depth_msg->header.frame_id;
     string color_frame = caminfo_color_msg->header.frame_id;
-    string thermal_frame = caminfo_thermal_msg->header.frame_id;
     ROS_INFO("depth frame: %s, color frame: %s.", depth_frame.c_str(), color_frame.c_str());
     if(depth_frame != color_frame){
       ROS_INFO("aligning depth to color");
@@ -150,49 +147,66 @@ PoseEstimator::PoseEstimator(ros::NodeHandle& nh_, const PoseEstimatorParams& pa
     depth_size = cv::Size(caminfo_depth_msg->width, caminfo_depth_msg->height);
     cv::Size color_size = cv::Size(caminfo_color_msg->width, caminfo_color_msg->height);
     depth_color_scale = (float) caminfo_depth_msg->width / caminfo_color_msg->width;
-    thermal_size = cv::Size(caminfo_thermal_msg->width, caminfo_thermal_msg->height);
-    thermal_dets_updated = false;
-    cout << "depth size: " << depth_size << ", color size: " << color_size << " --> scale: " << depth_color_scale  << ", thermal size: " << thermal_size << endl;
+    cout << "depth size: " << depth_size << ", color size: " << color_size << " --> scale: " << depth_color_scale << endl;
     K_depth << caminfo_depth_msg->K[0], 0.0, caminfo_depth_msg->K[2], 0.0, caminfo_depth_msg->K[4], caminfo_depth_msg->K[5], 0.0, 0.0, 1.0;
     K_color_scaled << caminfo_color_msg->K[0] * depth_color_scale, 0.0, caminfo_color_msg->K[2] * depth_color_scale, 0.0, caminfo_color_msg->K[4] * depth_color_scale, caminfo_color_msg->K[5] * depth_color_scale, 0.0, 0.0, 1.0;
-    K_thermal << caminfo_thermal_msg->K[0], 0.0, caminfo_thermal_msg->K[2], 0.0, caminfo_thermal_msg->K[4], caminfo_thermal_msg->K[5], 0.0, 0.0, 1.0;
     Eigen::Matrix3d K_color;
     K_color << caminfo_color_msg->K[0], 0.0, caminfo_color_msg->K[2], 0.0, caminfo_color_msg->K[4], caminfo_color_msg->K[5], 0.0, 0.0, 1.0;
 
     cout << "Received depth camera intrinsics: size: (" << depth_size.width << ", " << depth_size.height << ")" << endl << K_depth << endl;
     cout << "Received color camera intrinsics (scale: " << depth_color_scale << "): size: (" << color_size.width << ", " << color_size.height << ")" << endl << K_color_scaled << endl;
-    cout << "Received thermal camera intrinsics: size: (" << thermal_size.width << ", " << thermal_size.height << ")" << endl << K_thermal << endl;
 
     m_pixels_depth = Eigen::Matrix<float, 2, Eigen::Dynamic, Eigen::RowMajor>(2, depth_size.width * depth_size.height); // shape = 2 x HW
-//    g_pixels_depth_br = Eigen::Matrix<float, 2, Eigen::Dynamic, Eigen::RowMajor>(2, g_depth_size.width * g_depth_size.height); // shape = 2 x HW
     for (int u = 0; u < depth_size.width; ++u) {
       for (int v = 0; v < depth_size.height; ++v) {
         m_pixels_depth.col(v * depth_size.width + u) = Eigen::Vector2f(u, v); // - 0.5f
-//        g_pixels_depth_br.col(v * g_depth_size.width + u) = Eigen::Vector2f(u + 0.5f, v + 0.5f);
       }
     }
 
     m_depth_pixel_rays = K_depth.cast<float>().inverse() * m_pixels_depth.colwise().homogeneous(); // shape 3 x HW // .homogenous(): (u,v) -> (u, v, 1)
-//    g_depth_pixel_rays_br = K_depth.cast<float>().inverse() * g_pixels_depth_br.colwise().homogeneous(); // shape 3 x HW // .homogenous(): (u,v) -> (u, v, 1)
+    
+    string thermal_frame = "";
+    if(thermal_engine_ptr){
+      string thermal_info_topic = "/" + camera + "/lepton/camera_info";
+      ROS_INFO("Waiting for thermal camera info message on topic \"%s\"...", thermal_info_topic.c_str());
+      const auto& caminfo_thermal_msg = ros::topic::waitForMessage<sensor_msgs::CameraInfo>(thermal_info_topic, nh);
+      if(caminfo_thermal_msg == nullptr){
+        ROS_ERROR("No thermal camera info message received! Aborting!");
+        return;
+      }
+
+      thermal_frame = caminfo_thermal_msg->header.frame_id;
+
+      thermal_size = cv::Size(caminfo_thermal_msg->width, caminfo_thermal_msg->height);
+      thermal_dets_updated = false;
+      K_thermal << caminfo_thermal_msg->K[0], 0.0, caminfo_thermal_msg->K[2], 0.0, caminfo_thermal_msg->K[4], caminfo_thermal_msg->K[5], 0.0, 0.0, 1.0;
+      cout << "Received thermal camera intrinsics: size: (" << thermal_size.width << ", " << thermal_size.height << ")" << endl << K_thermal << endl;
+    }
 
     m_depth_to_color = Eigen::Affine3d::Identity();
     if(m_align_depth){
       geometry_msgs::TransformStamped depth_to_color, depth_to_thermal, thermal_to_color;
       try {
           depth_to_color = tfBuffer.lookupTransform(color_frame, depth_frame, ros::Time(0), ros::Duration(1.0));
-          depth_to_thermal = tfBuffer.lookupTransform(thermal_frame, depth_frame, ros::Time(0), ros::Duration(1.0));
-          thermal_to_color = tfBuffer.lookupTransform(color_frame, thermal_frame, ros::Time(0), ros::Duration(1.0));
+          if(thermal_engine_ptr){
+            depth_to_thermal = tfBuffer.lookupTransform(thermal_frame, depth_frame, ros::Time(0), ros::Duration(1.0));
+            thermal_to_color = tfBuffer.lookupTransform(color_frame, thermal_frame, ros::Time(0), ros::Duration(1.0));
+          }
       }
       catch(tf2::TransformException &ex) {
           ROS_ERROR("%s",ex.what());
           return;
       }
       m_depth_to_color = tf2::transformToEigen(depth_to_color);
-      m_depth_to_thermal = tf2::transformToEigen(depth_to_thermal);
-      P_thermal_to_color = (K_color * tf2::transformToEigen(thermal_to_color).affine()).cast<float>();
       cout << "Depth to color extrinsics: translation: " << m_depth_to_color.translation().transpose() << endl << "rotation: " << endl << m_depth_to_color.linear() << endl;
-      cout << "Depth to thermal extrinsics: translation: " << m_depth_to_thermal.translation().transpose() << endl << "rotation: " << endl << m_depth_to_thermal.linear() << endl;
-      cout << "thermal to color Projection: " << endl << P_thermal_to_color << endl;
+
+      if(thermal_engine_ptr){
+        m_depth_to_thermal = tf2::transformToEigen(depth_to_thermal);
+        P_thermal_to_color = (K_color * tf2::transformToEigen(thermal_to_color).affine()).cast<float>();
+        cout << "Depth to thermal extrinsics: translation: " << m_depth_to_thermal.translation().transpose() << endl << "rotation: " << endl << m_depth_to_thermal.linear() << endl;
+        cout << "thermal to color Projection: " << endl << P_thermal_to_color << endl;
+      }
+      
       aligned_depth_debug_pub = nh.advertise<sensor_msgs::Image>("/" + camera + "/debug_aligned_depth", 1);
     }
 
@@ -273,7 +287,7 @@ void PoseEstimator::depth_alignment_cb(){
     depth_input_updated = false;
     lck.unlock();
 
-    {
+    if(thermal_engine_ptr){
       std::lock_guard<std::mutex> lck_thermal(depth_thermal_mutex);
       depth_thermal.copyTo(depth_aligned_thermal);
     }
@@ -1379,7 +1393,7 @@ void PoseEstimator::plot_covariance(cv::Mat &img, const Human &human, const Dete
 void PoseEstimator::align_depth(cv::Mat& depth_thermal){
   depth_aligned.create(depth_size, CV_16UC1);
   depth_aligned = cv::Scalar::all(0.0);
-  const bool transform_to_thermal = (depth_thermal.cols == thermal_size.width && depth_thermal.rows == thermal_size.height);
+  const bool transform_to_thermal = thermal_engine_ptr && (depth_thermal.cols == thermal_size.width && depth_thermal.rows == thermal_size.height);
   if(transform_to_thermal)
     depth_thermal = cv::Scalar::all(0.0);
   //MapTypeDepth depth_aligned_map(depth_aligned.ptr<uint16_t>(0), 1, depth_aligned.cols * depth_aligned.rows);
